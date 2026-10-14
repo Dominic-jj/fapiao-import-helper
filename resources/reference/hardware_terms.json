@@ -1,0 +1,825 @@
+{
+  "version": 1,
+  "notes": "品名解释和税表候选，不是已确认映射。材质/用途未明时人工确认；不学习以文具替代真实商品的历史记录。",
+  "sources": [
+    "resources/reference/tax_list.xlsx",
+    "https://www.lessopipe.com/Service/Production-Bases/3413.html",
+    "https://www.sdnanhua.com/",
+    "https://www.3m.com.cn/3M/zh_CN/p/c/tapes/electrical/",
+    "https://www.hilti.com.hk/zh/c/CLS_FASTENER_7135/CLS_MECHANICAL_ANCHORS_7135"
+  ],
+  "rules": [
+    {
+      "standard_name": "水龙头或阀门配件",
+      "pattern": "龙头.*(?:拔手|把手|瓷芯)|(?:内牙)?阀芯|龙头零件",
+      "tax_names": [
+        "阀门、龙头零件"
+      ]
+    },
+    {
+      "standard_name": "螺纹锁固胶/胶粘剂",
+      "pattern": "螺丝胶|螺纹胶|锁固胶",
+      "tax_names": [
+        "调制粘合剂"
+      ]
+    },
+    {
+      "standard_name": "手动螺丝刀",
+      "pattern": "螺丝刀|螺丝批|改锥|起子",
+      "tax_names": [
+        "螺丝刀"
+      ]
+    },
+    {
+      "standard_name": "六角扳手/手动扳手",
+      "pattern": "六角匙|六角扳手|扳手|套筒绞手|套筒扳手",
+      "tax_names": [
+        "手动扳手及扳钳"
+      ]
+    },
+    {
+      "standard_name": "套筒工具头",
+      "pattern": "套筒头|套筒",
+      "tax_names": [
+        "通用手工具可互换部件"
+      ]
+    },
+    {
+      "standard_name": "美工刀/裁切手工具",
+      "pattern": "介刀|美工刀|裁纸刀|壁纸刀",
+      "tax_names": [
+        "日常用刀及类似制品"
+      ]
+    },
+    {
+      "standard_name": "砂轮切割片",
+      "pattern": "介片|切割片|砂轮片",
+      "tax_names": [
+        "固结磨具"
+      ]
+    },
+    {
+      "standard_name": "钻孔工具",
+      "pattern": "水钻头|开孔器|钻头|麻花钻",
+      "exclude": "自钻头|沉头自钻",
+      "tax_names": [
+        "钻孔或攻丝工具"
+      ]
+    },
+    {
+      "standard_name": "自钻螺丝",
+      "pattern": "沉头自钻|自钻头|自钻螺丝",
+      "tax_names": [
+        "钢铁制紧固件"
+      ]
+    },
+    {
+      "standard_name": "螺栓、螺钉、铆钉或垫圈",
+      "pattern": "六角顶爆|顶爆|拉爆|膨胀(?:螺丝|螺栓)|介子弹介|弹介|介子|拉钉|铆钉|螺丝|螺栓|螺钉|螺母|垫圈",
+      "tax_names": [
+        "钢铁制紧固件",
+        "铜制紧固件",
+        "铝制紧固件",
+        "其他金属紧固件"
+      ],
+      "requires_review": true,
+      "reason": "请确认紧固件材质；规格尺寸不能代替材质。",
+      "variants": [
+        {
+          "pattern": "不锈钢|钢|铁|304|316",
+          "tax_names": [
+            "钢铁制紧固件"
+          ],
+          "material": "钢铁",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "铜",
+          "tax_names": [
+            "铜制紧固件"
+          ],
+          "material": "铜",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "铝",
+          "tax_names": [
+            "铝制紧固件"
+          ],
+          "material": "铝",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "金属钉",
+      "pattern": "钢钉|铁钉|水泥钉",
+      "tax_names": [
+        "金属钉"
+      ]
+    },
+    {
+      "standard_name": "钳子/管剪",
+      "pattern": "管剪|铁钳|钢钳|钳子",
+      "tax_names": [
+        "钳子"
+      ]
+    },
+    {
+      "standard_name": "剪刀",
+      "pattern": "剪刀",
+      "tax_names": [
+        "剪刀及类似品"
+      ]
+    },
+    {
+      "standard_name": "手动长度测量工具",
+      "pattern": "卷尺|卡尺|水平尺",
+      "tax_names": [
+        "手动测量长度器具"
+      ]
+    },
+    {
+      "standard_name": "铁丝",
+      "pattern": "铁线|铁丝",
+      "tax_names": [
+        "铁丝"
+      ]
+    },
+    {
+      "standard_name": "钢丝",
+      "pattern": "钢丝(?!绳)",
+      "tax_names": [
+        "钢丝"
+      ]
+    },
+    {
+      "standard_name": "农用手动耙",
+      "pattern": "(?:铁柄|[0-9]+齿).*扒|铁耙|齿耙",
+      "tax_names": [
+        "农林牧通用金属手工具"
+      ]
+    },
+    {
+      "standard_name": "金属链条",
+      "pattern": "铁链|金属链条|钢链",
+      "tax_names": [
+        "金属链条及零件"
+      ]
+    },
+    {
+      "standard_name": "金属扎带/管箍",
+      "pattern": "钢扎带|不锈钢扎带|钢夹|管箍|喉箍|卸扣",
+      "tax_names": [
+        "其他金属制品",
+        "钢铁制紧固件"
+      ],
+      "requires_review": true,
+      "reason": "请确认是捆扎带、管箍还是紧固连接件，不能归为安全带或服装扣。"
+    },
+    {
+      "standard_name": "尼龙/塑料扎带",
+      "pattern": "扎带",
+      "tax_names": [
+        "其他塑料制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认是成品尼龙扎带；不把成品扎带默认当作纺织绳。",
+      "variants": [
+        {
+          "pattern": "尼龙|塑料",
+          "tax_names": [
+            "其他塑料制品"
+          ],
+          "material": "尼龙/塑料",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "硅酮密封胶",
+      "pattern": "玻璃胶|硅酮胶|耐候胶|长鹿明胶",
+      "tax_names": [
+        "密封用粘胶品"
+      ]
+    },
+    {
+      "standard_name": "胶粘剂",
+      "pattern": "大力胶|结构胶|大胶水|建筑胶",
+      "tax_names": [
+        "调制粘合剂",
+        "密封用粘胶品"
+      ],
+      "requires_review": true,
+      "reason": "请按产品用途确认粘合剂或密封胶，不能归为生产胶的机械。"
+    },
+    {
+      "standard_name": "PTFE生料密封带",
+      "pattern": "生带|生料带|生胶带",
+      "tax_names": [
+        "其他塑料制品",
+        "其他塑料薄膜",
+        "定形密封材料"
+      ],
+      "requires_review": true,
+      "reason": "生带按螺纹密封带理解，请确认产品形态；不能使用水管、麻布或文具编码。"
+    },
+    {
+      "standard_name": "电气绝缘胶带",
+      "pattern": "电工胶布|电工胶带|绝缘胶带|大胶布",
+      "tax_names": [
+        "其他塑料制品",
+        "橡胶粘带"
+      ],
+      "requires_review": true,
+      "reason": "请确认PVC基材还是橡胶/布基绝缘胶带。",
+      "variants": [
+        {
+          "pattern": "pvc|聚氯乙烯",
+          "tax_names": [
+            "其他塑料制品"
+          ],
+          "material": "PVC",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "橡胶|布基",
+          "tax_names": [
+            "橡胶粘带"
+          ],
+          "material": "橡胶/布基",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "美纹纸遮蔽胶带",
+      "pattern": "分色纸|美纹纸",
+      "tax_names": [
+        "其他纸制品",
+        "其他塑料制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认纸基遮蔽胶带及涂胶材料，不是文具盒或造纸设备。"
+    },
+    {
+      "standard_name": "泡棉双面胶带",
+      "pattern": "海绵胶|泡棉胶|双面胶",
+      "tax_names": [
+        "其他塑料制品",
+        "橡胶粘带"
+      ],
+      "requires_review": true,
+      "reason": "请确认泡棉和粘胶基材。"
+    },
+    {
+      "standard_name": "警示隔离带",
+      "pattern": "警示带|安全指示带|安全指示带|安全警示带",
+      "tax_names": [
+        "其他塑料制品",
+        "其他纸制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认隔离带基材，不是座椅安全带。"
+    },
+    {
+      "standard_name": "塑料隔离链",
+      "pattern": "红白胶链|塑料链",
+      "tax_names": [
+        "其他塑料制品"
+      ]
+    },
+    {
+      "standard_name": "开关插座底盒",
+      "history_resolves": false,
+      "pattern": "单合|底盒|接线盒",
+      "tax_names": [
+        "建筑用塑料制品",
+        "其他金属制品",
+        "金属制日用杂品"
+      ],
+      "requires_review": true,
+      "reason": "单合可能是单联底盒，请确认商品与材质，不仅凭简称决定税编。"
+    },
+    {
+      "standard_name": "电路连接器/插座",
+      "pattern": "插座|插排|插线板|插头|二三(?:三)?插|二插|接线头|线耳|灯头|公牛.*(?:座|插)",
+      "tax_names": [
+        "电路连接装置"
+      ]
+    },
+    {
+      "standard_name": "低压电路开关/保护装置",
+      "pattern": "空气开关|空开|漏电|漏保|接触器|时控开关|开关",
+      "requires_review": true,
+      "reason": "仅称开关不能确定电压等级和实际用途，请补充型号或用途。",
+      "tax_names": [
+        "低压开关、保护控制装置"
+      ],
+      "variants": [
+        {
+          "pattern": "高压|10kv|35kv",
+          "tax_names": [
+            "高压电路开关、保护电器装置"
+          ],
+          "material": "",
+          "requires_review": false,
+          "reason": ""
+          },
+          {"pattern": "空气开关|空开|漏电|漏保|接触器|时控开关|家用|墙壁|220v|250v|低压", "requires_review": false, "reason": ""}
+        ]
+      },
+      {
+        "standard_name": "电能表",
+      "pattern": "电子表|电表|电能表|电度表",
+      "tax_names": [
+        "电能表"
+      ],
+      "requires_review": true,
+      "reason": "电子表简称需确认是否为电能表。",
+      "variants": [
+        {
+          "pattern": "[0-9].*(?:a|安)|电表|电能表|电度表",
+          "tax_names": [
+            "电能表"
+          ],
+          "material": "",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "测电笔",
+      "pattern": "电笔|验电笔",
+      "tax_names": [
+        "电磁参数测量仪器仪表"
+      ]
+    },
+    {
+      "standard_name": "通信/电子网络电缆",
+      "pattern": "网线|双绞线",
+      "tax_names": [
+        "专用电缆"
+      ]
+    },
+    {
+      "standard_name": "光缆",
+      "pattern": "光缆",
+      "tax_names": [
+        "光缆"
+      ]
+    },
+    {
+      "standard_name": "绝缘电线",
+      "pattern": "护套线|电源线|bv线|bvr线",
+      "tax_names": [
+        "绝缘电线"
+      ]
+    },
+    {
+      "standard_name": "电线电缆",
+      "pattern": "电缆|电线",
+      "tax_names": [
+        "专用电缆",
+        "绝缘电线",
+        "其他电线电缆"
+      ],
+      "requires_review": true,
+      "reason": "请确认电力/通信电缆或绝缘电线；普通芯线不能默认归为同轴电缆。",
+      "variants": [
+        {
+          "pattern": "同轴",
+          "tax_names": [
+            "同轴电缆"
+          ],
+          "material": "",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "[0-9]+(?:\\.[0-9]+)?平方|电力电缆",
+          "tax_names": [
+            "专用电缆"
+          ],
+          "material": "",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "LED灯泡/LED光管电光源",
+      "pattern": "led.*(?:灯泡|灯管|光管)|(?:灯泡|灯管|光管).*led",
+      "tax_names": [
+        "其他电光源"
+      ]
+    },
+    {
+      "standard_name": "室内照明灯具",
+      "pattern": "筒灯|平板灯|吸顶灯|射灯",
+      "tax_names": [
+        "室内照明灯具"
+      ]
+    },
+    {
+      "standard_name": "户外照明灯具",
+      "pattern": "投光灯|马路弯灯|庭院灯|路灯",
+      "tax_names": [
+        "户外照明用灯具及装置"
+      ]
+    },
+    {
+      "standard_name": "应急照明灯具",
+      "pattern": "应急灯",
+      "tax_names": [
+        "特殊用途灯具及照明装置"
+      ]
+    },
+    {
+      "standard_name": "出口指示标识",
+      "pattern": "安全出口指示牌",
+      "tax_names": [
+        "发光标志、发光铭牌及类似品",
+        "其他塑料制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认带光源的指示灯或不发光的标识牌。"
+    },
+    {
+      "standard_name": "流量测量水表",
+      "pattern": "水表",
+      "tax_names": [
+        "流量测量仪表"
+      ]
+    },
+    {
+      "standard_name": "阀门或感应冲水阀",
+      "pattern": "角阀|球阀|闸阀|消防阀|小便.*阀|小便感应器|冲水阀",
+      "tax_names": [
+        "阀门"
+      ]
+    },
+    {
+      "standard_name": "水龙头",
+      "pattern": "龙头",
+      "tax_names": [
+        "龙头"
+      ]
+    },
+    {
+      "standard_name": "管道配件",
+      "pattern": "外牙直通|直通|弯头|三通|三叉|开边夹",
+      "tax_names": [
+        "塑料管附件",
+        "铸铁管附件",
+        "其他金属制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认塑料、铸铁还是其他金属管件。",
+      "variants": [
+        {
+          "pattern": "pvc|ppr|塑料",
+          "tax_names": [
+            "塑料管附件"
+          ],
+          "material": "塑料",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "铸铁",
+          "tax_names": [
+            "铸铁管附件"
+          ],
+          "material": "铸铁",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "水管/软管/气管",
+      "pattern": "煤气管|下水管|水管|软管|气管|胶管|线管|网管",
+      "tax_names": [
+        "塑料管",
+        "橡胶带、管",
+        "无缝钢管",
+        "焊接钢管"
+      ],
+      "requires_review": true,
+      "reason": "请确认管材材质与用途，不是煤气、自来水或管材生产机械。",
+      "variants": [
+        {
+          "pattern": "橡胶",
+          "tax_names": [
+            "橡胶带、管"
+          ],
+          "material": "橡胶",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "pvc|ppr|pe管|塑料|胶管",
+          "tax_names": [
+            "塑料管"
+          ],
+          "material": "塑料",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "网管",
+          "tax_names": [
+            "塑料管"
+          ],
+          "material": "增强塑料",
+          "requires_review": true,
+          "reason": "网管可能为增强塑料软管，请确认材质。"
+        },
+        {
+          "pattern": "不锈钢|钢管|铁管|镀锌",
+          "tax_names": [
+            "无缝钢管",
+            "焊接钢管"
+          ],
+          "material": "钢铁",
+          "requires_review": true,
+          "reason": "请确认无缝或焊接钢管。"
+        }
+      ]
+    },
+    {
+      "standard_name": "绝缘玻纤套管",
+      "pattern": "腊管|蜡管|黄腊管|黄蜡管",
+      "tax_names": [
+        "玻璃纤维及其制品",
+        "电气设备用绝缘配件"
+      ],
+      "requires_review": true,
+      "reason": "腊管按电线绝缘套管理解，需确认是玻纤套管还是其他绝缘配件。",
+      "variants": [
+        {
+          "pattern": "玻纤|玻璃纤维",
+          "tax_names": [
+            "玻璃纤维及其制品"
+          ],
+          "material": "玻璃纤维",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "绝缘板材",
+      "pattern": "绝缘板",
+      "tax_names": [
+        "塑料板、片",
+        "玻璃纤维及其制品",
+        "电气设备用绝缘配件"
+      ],
+      "requires_review": true,
+      "reason": "请确认板材材质，不是生产绝缘材料的设备。"
+    },
+    {
+      "standard_name": "线槽/电缆桥架",
+      "pattern": "线槽|铁槽|连片",
+      "tax_names": [
+        "建筑用塑料制品",
+        "其他金属制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认塑料线槽或金属桥架及连接片。",
+      "variants": [
+        {
+          "pattern": "铁槽|金属|钢|不锈钢",
+          "tax_names": [
+            "其他金属制品"
+          ],
+          "material": "金属",
+          "requires_review": false,
+          "reason": ""
+        },
+        {
+          "pattern": "pvc|塑料",
+          "tax_names": [
+            "建筑用塑料制品"
+          ],
+          "material": "塑料",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "橡胶密封圈",
+      "pattern": "胶圈|密封圈",
+      "tax_names": [
+        "橡胶密封件",
+        "塑料管附件"
+      ],
+      "requires_review": true,
+      "reason": "请确认密封圈材质，不应仅按配套水管编码。",
+      "variants": [
+        {
+          "pattern": "橡胶",
+          "tax_names": [
+            "橡胶密封件"
+          ],
+          "material": "橡胶",
+          "requires_review": false,
+          "reason": ""
+        }
+      ]
+    },
+    {
+      "standard_name": "卫生洁具或水箱配件",
+      "pattern": "双按水箱|水箱|下水器|脚踏器",
+      "tax_names": [
+        "日用塑料制品",
+        "金属制卫生器具",
+        "阀门、龙头零件"
+      ],
+      "requires_review": true,
+      "reason": "请确认是完整洁具、水箱还是阀门配件及其材质。"
+    },
+    {
+      "standard_name": "喷雾润滑脂",
+      "requires_review": true,
+      "reason": "喷雾黄油可能为含溶剂润滑喷剂，需按成分确认润滑脂或其他制剂。",
+      "history_resolves": false,
+      "variants": [{"pattern": "润滑脂", "requires_review": false, "reason": ""}],
+      "pattern": "喷雾黄油|润滑脂|润滑黄油",
+      "tax_names": [
+        "润滑脂"
+      ]
+    },
+    {
+      "standard_name": "深黄色油漆或润滑油脂",
+      "history_resolves": false,
+      "pattern": "深黄油",
+      "tax_names": [
+        "VOC含量低于420克/升（含）的涂料",
+        "VOC含量高于420克/升的涂料",
+        "润滑脂"
+      ],
+      "requires_review": true,
+      "reason": "深黄油可能指颜色油漆或润滑脂，需确认真实商品和VOC信息。"
+    },
+    {
+      "standard_name": "金属除锈/防锈制剂",
+      "pattern": "除锈剂|防锈剂",
+      "tax_names": [
+        "金属表面处理剂"
+      ]
+    },
+    {
+      "standard_name": "喷漆涂料",
+      "pattern": "手喷漆|喷漆|自喷漆|油漆",
+      "tax_names": [
+        "VOC含量低于420克/升（含）的涂料",
+        "VOC含量高于420克/升的涂料"
+      ],
+      "requires_review": true,
+      "reason": "请按产品资料确认施工状态VOC含量，不默认选择阈值一侧。"
+    },
+    {
+      "standard_name": "涂料稀释溶剂",
+      "pattern": "稀释剂|天那水|香蕉水",
+      "tax_names": [
+        "溶剂油",
+        "其他专项化学用品"
+      ],
+      "requires_review": true,
+      "reason": "请确认稀释剂成分与用途，不是药品或美工颜料。"
+    },
+    {
+      "standard_name": "漆刷/油漆滚筒",
+      "pattern": "油扫|羊毛扫|油漆刷|滚筒",
+      "requires_review": true,
+      "reason": "请确认油漆滚筒刷或机械滚筒部件。",
+      "variants": [{"pattern": "油扫|羊毛扫|油漆刷|油滚筒|漆.*滚筒|滚筒刷", "requires_review": false, "reason": ""}],
+      "tax_names": [
+        "刷子类制品"
+      ]
+    },
+    {
+      "standard_name": "清洁扫把/拖把",
+      "pattern": "扫把|地拖头|拖把",
+      "tax_names": [
+        "清洁清扫类工具及其已加工材料"
+      ]
+    },
+    {
+      "standard_name": "合成洗涤剂",
+      "pattern": "洗衣粉|洗衣液",
+      "tax_names": [
+        "合成洗涤剂"
+      ]
+    },
+    {
+      "standard_name": "空气清新制剂",
+      "pattern": "空气清新剂",
+      "tax_names": [
+        "其他专项化学用品"
+      ],
+      "requires_review": true,
+      "reason": "请确认清新制剂成分，不是空气清洁电器。"
+    },
+    {
+      "standard_name": "成品杀虫制剂",
+      "pattern": "杀虫水|杀虫剂",
+      "tax_names": [
+        "化学农药制剂",
+        "生物农药制剂"
+      ],
+      "requires_review": true,
+      "reason": "请确认有效成分与制剂类型，不按品牌猜测为生物制剂。"
+    },
+    {
+      "standard_name": "电蚊拍",
+      "pattern": "电蚊拍",
+      "tax_names": [
+        "其他家用清洁卫生电器具"
+      ],
+      "requires_review": true,
+      "reason": "需确认具体产品类别，不是网球拍。"
+    },
+    {
+      "standard_name": "家用排气扇",
+      "pattern": "管道扇|排气扇|换气扇",
+      "tax_names": [
+        "家用换气、排气扇",
+        "工业风扇"
+      ],
+      "requires_review": true,
+      "reason": "请确认家用换气扇或工业风扇。"
+    },
+    {
+      "standard_name": "家用电风扇",
+      "pattern": "吊扇|小风扇",
+      "tax_names": [
+        "家用电风扇"
+      ]
+    },
+    {
+      "standard_name": "锁具/锁舌",
+      "pattern": "密码锁|挂锁|锁舌",
+      "tax_names": [
+        "锁及其附件"
+      ]
+    },
+    {
+      "standard_name": "闭门器",
+      "pattern": "闭门器",
+      "tax_names": [
+        "其他金属制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认闭门器结构与材质。"
+    },
+    {
+      "standard_name": "沥青冷补料",
+      "pattern": "沥青冷补料",
+      "tax_names": [
+        "沥青混合物"
+      ]
+    },
+    {
+      "standard_name": "沥青制品",
+      "pattern": "沥青油",
+      "tax_names": [
+        "其他石油制品",
+        "沥青混合物"
+      ],
+      "requires_review": true,
+      "reason": "请确认成品沥青油还是沥青混合料，不是原油矿产。"
+    },
+    {
+      "standard_name": "交通隔离/防撞设施",
+      "pattern": "防撞杆|挡车器|太阳能路障灯",
+      "tax_names": [
+        "其他交通安全及管制专用设备",
+        "其他金属制品",
+        "其他塑料制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认防撞设施材质及是否带电气信号功能。"
+    },
+    {
+      "standard_name": "手工井盖钩",
+      "pattern": "沙井勾|沙井钩",
+      "tax_names": [
+        "其他金属制品"
+      ],
+      "requires_review": true,
+      "reason": "请确认手工井盖钩。"
+    }
+  ]
+}

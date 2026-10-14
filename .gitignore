@@ -1,0 +1,41 @@
+# Python 缓存
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+
+# 本地草稿
+TODO.md
+.claude/
+
+# 内部工作资料：只保留本地，不属于用户或贡献者文档
+/AGENTS.md
+/EXECUTION_PLAN.md
+/docs/CHANGELOG.md
+/docs/REVIEW.md
+/docs/TAX_MATCHING.md
+/docs/PRODUCT_REVIEW.md
+/docs/EXECUTION_RESULTS.md
+.env
+.env.*
+!.env.example
+
+# 原始页面截图可能包含企业资料；公开截图放入 resources/screenshots/
+/resources/*.png
+
+# 用户本地数据（不提交）
+tmp/
+resources/reference/train_data/*
+resources/mappings/tax_aliases.json
+resources/mappings/confirmed_tax_codes.json
+resources/mappings/*.tmp
+output/
+/build/
+/dist/
+
+# 保留目录结构
+!resources/reference/train_data/.gitkeep
+!resources/mappings/.gitkeep

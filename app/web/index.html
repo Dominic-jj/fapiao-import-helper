@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>发票明细导入助手</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div><div class="eyebrow">FAPIAO IMPORT HELPER</div><h1>发票明细导入助手</h1></div>
+      <div class="topbar-tools"><span id="draft-status" class="muted" aria-live="polite"></span><button id="browse-tax-table" class="button ghost small" type="button">浏览税编表</button><button id="toggle-product-settings" class="button ghost small" type="button" aria-expanded="false">我的商品库与导出设置</button><button id="toggle-ai-settings" class="button ghost small" type="button" aria-expanded="false">AI 辅助设置</button></div>
+    </header>
+
+    <section id="product-settings-panel" class="card product-settings" hidden>
+      <div class="section-title"><h2>我的商品库与导出设置</h2></div>
+      <div class="settings-row"><label for="history-dir">历史商品目录</label><input id="history-dir" type="text" placeholder="留空使用默认目录"><button id="choose-history" class="button ghost small">选择目录</button><button id="open-history" class="button ghost small">打开目录</button></div>
+      <p id="history-status" class="muted" aria-live="polite"></p>
+      <div class="settings-row"><label for="industry">行业词库</label><select id="industry"><option value="">通用模式</option><option value="hardware">五金 / 电工 / 水暖</option></select><label for="default-tax-rate">默认税率（%）</label><input id="default-tax-rate" type="number" min="0" max="100" step="any"><label for="price-mode">单价口径</label><select id="price-mode"><option value="inclusive">含税</option><option value="exclusive">不含税</option></select><button id="save-product-settings" class="button primary small">保存并重新读取</button></div>
+      <p class="muted">只读取标准明细模板，原始历史文件保持不变。相同名称的不同属性记录分别保留；新默认税率用于之后解析或新增的明细，已有明细可逐行修改。官方导入时请选择相同的含税 / 不含税口径。</p>
+    </section>
+
+    <section id="ai-settings-panel" class="card ai-settings" hidden>
+      <div class="section-title"><div><span class="step">AI</span><h2>可选的 AI 辅助匹配</h2></div><span id="ai-settings-status" class="muted" aria-live="polite"></span></div>
+      <label class="ai-enable"><input id="ai-enabled" type="checkbox"><span><strong>启用按需 AI 辅助</strong><small>开启后对待确认明细点击“AI 找候选”；录入和本地搜索不会自动调用。关闭后仍可完成所有本地操作。</small></span></label>
+      <div class="ai-key-row"><label for="ai-key">DeepSeek API Key</label><input id="ai-key" type="password" autocomplete="new-password" placeholder="留空则使用已保存的密钥或环境变量"><button id="clear-ai-key" class="button ghost small" type="button">清除已保存密钥</button><button id="save-ai-settings" class="button primary small" type="button">保存设置</button></div>
+      <p class="ai-disclosure">启用后，商品名称、规格、单位及本地召回的候选信息可能发送给 DeepSeek。请使用自己的 API Key；密钥保存在系统凭据管理器中，不会写入项目配置文件。</p>
+    </section>
+
+    <section class="card input-card">
+      <div class="section-title"><div><span class="step">01</span><h2>快速录入</h2></div><span class="muted">每行一条，按“名称 单位 数量 单价”输入</span></div>
+      <textarea id="manual-input" rows="5" placeholder="笔记本 本 5 8&#10;A4 复印纸 包 2 25&#10;漏电开关 个 1 65"></textarea>
+      <div class="toolbar"><div id="notice" class="notice" aria-live="polite"></div><div class="actions"><button id="clear" class="button ghost">清空</button><button id="parse" class="button primary">解析明细</button></div></div>
+      <div id="parse-errors" class="errors"></div>
+    </section>
+
+    <section class="card details-card">
+      <div class="section-title"><div><span class="step">02</span><h2>校对明细与税编</h2></div><div class="toolbar-inline"><span id="summary" class="muted">尚未录入明细</span><button id="rematch" class="button ghost small">重新匹配</button></div></div>
+      <div class="table-scroll"><table><thead><tr><th>物品名称</th><th>规格</th><th>单位</th><th>数量</th><th>单价</th><th>金额</th><th>税率（%）</th><th>税收分类</th><th></th></tr></thead><tbody id="items-body"></tbody></table></div>
+      <button id="add-row" class="add-row">＋ 添加一行</button>
+      <div class="bottom-bar"><div class="muted" id="match-summary"></div><div class="actions"><button id="save-confirmations" class="button ghost">保存税编确认</button><button id="export" class="button primary">导出 Excel</button></div></div>
+    </section>
+    <footer id="export-mode">使用标准模板 invoice_template.xlsx · 发票开具和打印在官方系统完成</footer>
+  </main>
+  <dialog id="tax-catalog" aria-labelledby="tax-catalog-title">
+    <div class="catalog-header"><div><h2 id="tax-catalog-title">浏览税编表</h2><p class="muted">按分类逐级浏览，查看完整说明；汇总分类只能查看，开票请选择具体商品。</p></div><button id="catalog-close" class="button ghost small" type="button">关闭 · Esc</button></div>
+    <div class="catalog-toolbar"><input id="catalog-query" type="search" aria-label="搜索税编表" placeholder="搜索当前分类及下级：名称、简称、说明或税号…"><label><input id="catalog-leaf-only" type="checkbox">只看可选商品</label><button id="catalog-search" class="button primary small" type="button">搜索</button></div>
+    <div id="catalog-message" class="notice" role="status"></div>
+    <div class="catalog-layout">
+      <nav id="catalog-roots" aria-label="税表大类"></nav>
+      <section class="catalog-results"><div id="catalog-path" aria-label="当前分类路径"></div><div id="catalog-count" class="muted" aria-live="polite"></div><div id="catalog-list"></div><div class="catalog-pages"><button id="catalog-prev" class="button ghost small" type="button">上一页</button><span id="catalog-page" class="muted"></span><button id="catalog-next" class="button ghost small" type="button">下一页</button></div></section>
+      <aside class="catalog-detail"><h3 id="catalog-detail-name">选择分类查看详情</h3><div id="catalog-kind" class="muted"></div><label for="catalog-code">税收分类编码</label><input id="catalog-code" readonly><button id="catalog-copy" class="button ghost small" type="button" disabled>复制具体税号</button><div id="catalog-detail-path" class="muted"></div><h4>分类说明</h4><div id="catalog-description">左侧按大类浏览，也可以搜索整个税表。</div><label for="catalog-target">应用到明细</label><select id="catalog-target"><option value="">仅查询，不应用</option></select><button id="catalog-apply" class="button primary" type="button" disabled>确认并应用到这一行</button></aside>
+    </div>
+  </dialog>
+  <script src="app.js"></script>
+  <script src="tax-catalog.js"></script>
+</body>
+</html>
