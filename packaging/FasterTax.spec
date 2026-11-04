@@ -1,20 +1,21 @@
-"""Windows onedir 构建；仅收集桌面端需要的资源与后端。"""
+"""Windows 单文件构建；公共资源内置，输出一个可直接运行的 exe。"""
 from pathlib import Path
 import os
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+from PyInstaller.utils.hooks import collect_data_files
 
 root = Path(SPECPATH).parent
+icon_path = root / "resources/icons/fapiao-import-helper.ico"
 datas = collect_data_files("webview")
 datas += [
     (str(root / "app/web"), "app/web"),
     (str(root / "resources/templates/invoice_template.xlsx"), "resources/templates"),
     (str(root / "resources/reference/tax_list.xlsx"), "resources/reference"),
     (str(root / "resources/reference/hardware_terms.json"), "resources/reference"),
+    (str(root / "LICENSE"), "."),
 ]
 # 公共包只携带上述公共资源，历史与确认库由使用者在本机配置。
 
-with_ai = os.environ.get("FASTER_TAX_BUILD_AI") == "1"
 smoke = os.environ.get("FASTER_TAX_BUILD_SMOKE") == "1"
 entry = root / ("tests/desktop_smoke.py" if smoke else "main.py")
 name = "FapiaoImportHelperSmoke" if smoke else "FapiaoImportHelper"
@@ -24,17 +25,15 @@ excludes = [
     "webview.platforms.qt", "webview.platforms.gtk", "webview.platforms.cocoa",
     "webview.platforms.cef", "webview.platforms.android", "tkinter",
 ]
-if not with_ai:
-    excludes.append("openai")
 
 a = Analysis(
     [str(entry)], pathex=[str(root)], datas=datas,
-    hiddenimports=["webview.platforms.winforms", "webview.platforms.edgechromium", "clr"] + collect_submodules("keyring.backends"),
+    hiddenimports=["webview.platforms.winforms", "webview.platforms.edgechromium", "clr"],
     excludes=excludes,
 )
 pyz = PYZ(a.pure)
 exe = EXE(
-    pyz, a.scripts, [], exclude_binaries=True, name=name,
+    pyz, a.scripts, a.binaries, a.datas, [], name=name,
     debug=False, strip=False, upx=False, console=False,
+    icon=str(icon_path),
 )
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name=name)

@@ -1,7 +1,4 @@
-from concurrent.futures import ThreadPoolExecutor
 import json
-from pathlib import Path
-from threading import Event
 from unittest.mock import Mock
 
 import openpyxl
@@ -11,6 +8,7 @@ from app.api import DesktopAPI
 from core.invoice_writer import generate
 from core.models import Item
 from core.tax_matcher import TaxMatcher
+from core.user_settings import load_settings, save_settings, settings_path
 
 
 @pytest.fixture
@@ -20,7 +18,7 @@ def create_api(tmp_path, monkeypatch):
             confirmed_map_path=str(tmp_path / 'confirmed.json'), industry=industry)
         monkeypatch.setattr('app.api.TaxMatcher', lambda: matcher)
         monkeypatch.setattr('app.api.ensure_user_resources', lambda: None)
-        monkeypatch.setattr('app.api.load_settings', lambda: {'ai_enabled': False, 'industry': industry})
+        monkeypatch.setattr('app.api.load_settings', lambda: {'industry': industry})
         return DesktopAPI(draft_path=str(tmp_path / 'draft.json'))
     return create
 
@@ -104,28 +102,6 @@ def test_generic_products_are_not_forced_into_hardware(tmp_path, industry):
         assert all(c.get('source') != 'hardware_rule' for c in matcher.match_candidates(name))
 
 
-def test_ai_runs_outside_edit_lock_and_cancel_discards_result(create_api, monkeypatch):
-    api = create_api(industry='')
-    item = api.parse_text('陌生商品 个 1 10')['items'][0]
-    api._ai_enabled = True
-    api._ai_classifier.is_available = lambda: True
-    entered, release = Event(), Event()
-    def delayed(items, matcher, classifier):
-        entered.set()
-        assert release.wait(5)
-        items[0].tax_code = next(e['code'] for e in matcher.entries if e['is_leaf'])
-    monkeypatch.setattr('app.api.match_items_with_ai', delayed)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        future = executor.submit(api.assist_tax, item['row_id'])
-        assert entered.wait(5)
-        api.update_item(item['row_id'], {'quantity': 2})
-        api.cancel_ai(item['row_id'])
-        release.set()
-        assert not future.result(5)['ok']
-    assert api.get_state()['items'][0]['amount'] == 20
-    assert not api.get_state()['items'][0]['tax_confirmed']
-
-
 def test_invalid_tax_rates_cannot_enter_export(create_api):
     api = create_api()
     item = api.parse_text('漏电开关 个 1 65')['items'][0]
@@ -151,25 +127,30 @@ def test_generic_material_spec_ranks_relevant_candidate_but_requires_review(tmp_
     assert candidates[0]['requires_review']
 
 
-def test_same_context_ai_requests_share_one_call(create_api, monkeypatch):
-    api = create_api(industry='')
-    rows = api.parse_text('陌生商品 个 1 10\n陌生商品 个 2 10')['items']
-    api._ai_enabled = True
-    api._ai_classifier.is_available = lambda: True
-    entered, release = Event(), Event()
-    calls = []
-    def delayed(items, matcher, classifier):
-        calls.append(1)
-        entered.set()
-        assert release.wait(5)
-    monkeypatch.setattr('app.api.match_items_with_ai', delayed)
-    with ThreadPoolExecutor(max_workers=2) as executor:
-        first = executor.submit(api.assist_tax, rows[0]['row_id'])
-        assert entered.wait(5)
-        second = executor.submit(api.assist_tax, rows[1]['row_id'])
-        release.set()
-        assert first.result(5)['ok'] and second.result(5)['ok']
-    assert len(calls) == 1
+def test_legacy_draft_preserves_manual_choice_and_ignores_removed_metadata(create_api, tmp_path):
+    api = create_api()
+    item = api.parse_text('漏电开关 个 1 65')['items'][0]
+    api.select_tax(item['row_id'], item['tax_code'])
+    path = tmp_path / 'draft.json'
+    draft = json.loads(path.read_text(encoding='utf-8'))
+    draft['items'][0]['tax_ai_confidence'] = 'high'
+    path.write_text(json.dumps(draft), encoding='utf-8')
+    restored = create_api().get_state()['items'][0]
+    assert restored['tax_code'] == item['tax_code']
+    assert restored['tax_confirmed'] and restored['tax_match_source'] == 'manual'
+    assert 'tax_ai_confidence' not in restored
+
+
+def test_legacy_preferences_keep_product_and_export_settings(tmp_path):
+    path = settings_path()
+    path.parent.mkdir(parents=True)
+    expected = {'history_dir': str(tmp_path / 'history'), 'industry': 'hardware',
+                'tax_rate': '0.03', 'price_mode': 'exclusive'}
+    path.write_text(json.dumps({**expected, 'ai_enabled': True}), encoding='utf-8')
+    settings = load_settings()
+    assert settings == expected
+    save_settings(settings)
+    assert json.loads(path.read_text(encoding='utf-8')) == expected
 
 
 def test_draft_write_failure_preserves_previous_good_file(create_api, tmp_path, monkeypatch):

@@ -1,3 +1,2 @@
 pywebview>=5,<7
 openpyxl>=3.1,<4
-keyring>=25,<27

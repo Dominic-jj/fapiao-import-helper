@@ -6,17 +6,15 @@ let blocking = 0;
 let ready = false;
 let searchTimer = null;
 let searchVersion = 0;
-let aiEnabledDraft = null;
 let rawTimer = null;
 let rawQueue = Promise.resolve();
 let productDraft = false;
-const aiRunning = new Set();
 
 function api() { return window.pywebview.api; }
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
 function sourceLabel(source) {
   return ({confirmed_context:'我的确认库', confirmed:'人工映射', history:'历史商品', hardware_rule:'五金词库',
-    alias:'本地别名', tax_list:'税表搜索', summary_descendant:'税表分类补充', ai_rerank:'AI 建议'})[source] || '本地候选';
+    alias:'本地别名', tax_list:'税表搜索', summary_descendant:'税表分类补充'})[source] || '本地候选';
 }
 function notice(message, error = false) {
   const el = $("#notice"); el.textContent = message || ""; el.className = `notice${error ? " error" : ""}`;
@@ -86,7 +84,7 @@ function render() {
           <td><span class="amount">${Number(item.amount || 0).toFixed(2)}</span></td>
           <td><input class="number" data-field="tax_rate" type="number" min="0" max="100" step="any" value="${Number(item.tax_rate || 0) * 100}"></td>
           <td class="tax-cell"><div class="tax-select"><input class="tax-search" data-search="${item.row_id}" placeholder="搜索分类名称或编码…"><button class="button ghost small" data-action="suggest" data-id="${item.row_id}">查找</button><button class="button ghost small" data-action="browse-tax" data-id="${item.row_id}">浏览表</button></div>
-            <div class="current-tax"></div><button class="button ghost small ai-row" data-action="assist" data-id="${item.row_id}">AI 找候选</button><div class="tax-results" id="results-${item.row_id}"></div></td>
+            <div class="current-tax"></div><div class="tax-results" id="results-${item.row_id}"></div></td>
           <td><button class="remove" title="删除此行" data-action="remove" data-id="${item.row_id}">×</button></td>
         </tr>`).join("");
     }
@@ -101,38 +99,16 @@ function render() {
   const amount = state.items.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   $("#summary").innerHTML = `<span class="summary-count">${state.items.length} 行明细</span><span class="summary-divider">·</span><span class="summary-total">合计 <strong>¥${amount.toFixed(2)}</strong></span>`;
   const stats = state.match_stats;
-  const aiSummary = stats ? (stats.ai_attempted
-    ? `AI 调用 ${stats.ai_attempted} · 成功 ${stats.ai_success || 0} · 回退/待复核 ${stats.ai_fallback || 0}`
-    : stats.ai_available ? "AI 可用，本轮未触发" : (stats.ai_skip_reason || "AI 未启用")) : "";
-  $("#match-summary").textContent = stats ? `本轮税编建议：${stats.processed}/${stats.total} · 待确认 ${stats.needs_review || 0} · 历史 ${stats.confirmed} · 规则 ${stats.rule} · ${aiSummary}` : "";
+  $("#match-summary").textContent = stats ? `本轮税编建议：${stats.processed}/${stats.total} · 待确认 ${stats.needs_review || 0} · 历史 ${stats.confirmed} · 规则 ${stats.rule}` : "";
   $("#parse-errors").innerHTML = state.parse_errors?.length ? state.parse_errors.map(error => `<p>第 ${error.line_number} 行：${escapeHtml(error.raw)}；${escapeHtml(error.reason)}</p>`).join("") : "";
-  renderAiSettings();
   renderProductSettings();
   $("#draft-status").textContent = state.draft_message || "";
-  document.querySelectorAll('.ai-row').forEach(button => {
-    button.hidden = !state.ai_available;
-    button.textContent = aiRunning.has(Number(button.dataset.id)) ? '取消 AI' : 'AI 找候选';
-  });
   controls();
 }
 function accept(result) {
   if ((result.revision ?? 0) < (state.revision ?? 0)) return;
   state = result; render();
 }
-function renderAiSettings() {
-  const settings = state.ai_settings || {};
-  const checkbox = $("#ai-enabled");
-  checkbox.checked = aiEnabledDraft === null ? Boolean(settings.enabled) : aiEnabledDraft;
-  const source = settings.key_source || "未配置";
-  const status = !settings.enabled
-    ? `已关闭 · 本地匹配和手动选择可用 · Key：${source}`
-    : settings.available
-      ? `已开启 · Key：${source}`
-      : `已开启但不可调用 · ${settings.message || "请配置 API Key"}`;
-  $("#ai-settings-status").textContent = status;
-  $("#clear-ai-key").disabled = source !== "系统凭据管理器";
-}
-
 function renderProductSettings() {
   const settings = state.product_settings || {};
   if (!productDraft) {
@@ -186,28 +162,6 @@ $("#manual-input").addEventListener("keydown", event => {
 $("#clear").addEventListener("click", () => run(async () => { clearTimeout(rawTimer); await rawQueue; accept(await api().clear_items()); $("#manual-input").value = ""; notice(""); }));
 $("#add-row").addEventListener("click", () => run(async () => { await flushEdits(); accept(await api().add_item()); $("#items-body tr:last-child .name")?.focus(); }));
 $("#rematch").addEventListener("click", () => run(async () => { await flushEdits(); notice("正在重新匹配…"); accept(await api().rematch()); notice("建议已更新，人工选择已保留"); }));
-$("#toggle-ai-settings").addEventListener("click", () => {
-  const panel = $("#ai-settings-panel"), expanded = panel.hidden;
-  panel.hidden = !expanded;
-  $("#toggle-ai-settings").setAttribute("aria-expanded", String(expanded));
-});
-$("#ai-enabled").addEventListener("change", event => { aiEnabledDraft = event.target.checked; });
-$("#save-ai-settings").addEventListener("click", () => run(async () => {
-  const result = await api().configure_ai($("#ai-enabled").checked, $("#ai-key").value);
-  if (!result.ok) { notice(result.message, true); return; }
-  $("#ai-key").value = "";
-  aiEnabledDraft = null;
-  accept(result.state);
-  notice("AI 设置已保存；对待确认商品点击“AI 找候选”按需使用");
-}));
-$("#clear-ai-key").addEventListener("click", () => run(async () => {
-  const result = await api().configure_ai($("#ai-enabled").checked, "", true);
-  if (!result.ok) { notice(result.message, true); return; }
-  aiEnabledDraft = null;
-  accept(result.state);
-  notice("已清除系统凭据管理器中的密钥；环境变量配置仍可使用");
-}));
-
 $("#items-body").addEventListener("change", event => {
   const input = event.target.closest("[data-field]"); if (!input) return;
   const values = rowValues(input.closest("tr"));
@@ -230,7 +184,7 @@ $("#items-body").addEventListener("input", event => {
 $("#items-body").addEventListener("click", event => {
   const button = event.target.closest("[data-action]"); if (!button) return;
   const rowId = Number(button.dataset.id);
-  if (button.dataset.action === 'browse-tax') openTaxCatalog(rowId);
+  if (button.dataset.action === 'browse-tax') openTaxCatalog();
   if (button.dataset.action === "remove") run(async () => {
     // 删除错误行也应可用，同时提交其他行的最新编辑。
     const rows = allRows().filter(row => row.row_id !== rowId);
@@ -250,23 +204,6 @@ $("#items-body").addEventListener("click", event => {
     if (!result.ok) notice(result.message, true);
     else { accept(result.state); notice("税编建议已确认"); }
   });
-  if (button.dataset.action === 'assist') {
-    if (aiRunning.has(rowId)) {
-      api().cancel_ai(rowId).then(() => notice('AI 已取消；正在发送的请求结束后会丢弃结果'));
-      return;
-    }
-    aiRunning.add(rowId); render();
-    (async () => {
-      try {
-        await mutationQueue;
-        await flushEdits();
-        const result = await api().assist_tax(rowId);
-        if (result.ok) { accept(result.state); notice('AI 建议已更新，请按实际商品确认'); }
-        else notice(result.message, true);
-      } catch (error) { notice(String(error), true); }
-      finally { aiRunning.delete(rowId); render(); }
-    })();
-  }
 });
 function renderCandidates(rowId, candidates) {
   const container = $(`#results-${rowId}`); if (!container) return;

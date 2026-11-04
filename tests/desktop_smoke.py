@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import time
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,24 +12,26 @@ import openpyxl
 import webview
 
 ROOT = Path(__file__).resolve().parents[1]
-os.environ['LOCALAPPDATA'] = os.environ.get('FASTER_TAX_SMOKE_USER_DIR', str(ROOT / 'output' / 'desktop-smoke-user'))
+CHECK_DIR = Path(tempfile.mkdtemp(prefix='FapiaoImportHelper-check-'))
+os.environ['LOCALAPPDATA'] = os.environ.get('FASTER_TAX_SMOKE_USER_DIR', str(CHECK_DIR / 'user'))
 if not getattr(sys, "frozen", False):
     sys.path.insert(0, str(ROOT))
 
 from app.desktop import main
 from core.user_settings import save_settings
-save_settings({'ai_enabled': False, 'industry': 'hardware', 'tax_rate': '0.01', 'price_mode': 'inclusive'})
-
-os.environ["DEEPSEEK_API_KEY"] = ""
+save_settings({'industry': 'hardware', 'tax_rate': '0.01', 'price_mode': 'inclusive'})
 result = {}
-output_dir = Path(os.environ.get("FASTER_TAX_SMOKE_OUTPUT", str(ROOT / "output")))
+output_dir = Path(os.environ.get("FASTER_TAX_SMOKE_OUTPUT", str(CHECK_DIR)))
 output_dir.mkdir(parents=True, exist_ok=True)
 output = output_dir / "desktop-smoke.xlsx"
 original_create = webview.create_window
 original_start = webview.start
+check_api = None
 
 
 def create_hidden(*args, **kwargs):
+    global check_api
+    check_api = kwargs['js_api']
     window = original_create(*args, **kwargs, hidden=True)
     window.create_file_dialog = lambda *args, **kwargs: (str(output),)
     return window
@@ -53,6 +56,10 @@ def check_window():
         text = json.dumps("漏电开关 个 1 65\nBV护套线 米 2 3", ensure_ascii=True)
         window.evaluate_js(f"document.querySelector('#manual-input').value = {text}; document.querySelector('#parse').click()")
         wait_for("document.querySelectorAll('tr[data-id]').length === 2 && pending === 0")
+        assert window.evaluate_js("document.querySelector('#toggle-ai-settings, #ai-settings-panel, [data-action=assist]') === null")
+        assert window.evaluate_js("['configure_ai', 'assist_tax', 'cancel_ai'].every(name => typeof window.pywebview.api[name] === 'undefined')")
+        assert window.evaluate_js("!document.querySelector('#match-summary').textContent.includes('AI')")
+        result['ai_removed'] = True
         window.evaluate_js("""
             const row = document.querySelector('tr[data-id]');
             const quantity = row.querySelector('[data-field=quantity]');
@@ -101,14 +108,18 @@ def check_window():
         assert window.evaluate_js('document.querySelectorAll(".tax-results .candidate").length') >= 2
         window.evaluate_js('document.querySelector(".tax-results .candidate").focus(); document.querySelector(".tax-results .candidate").dispatchEvent(new KeyboardEvent("keydown", {key:"Enter", bubbles:true}))')
         wait_for("pending === 0 && state.items[0].tax_match_source === 'manual'")
-        # 完整税表：汇总项不可应用，按编码查询后可直接确认到当前行。
+        # 完整税表只负责查询：查另一类商品后，商品明细及确认状态均保持原样。
+        before_catalog = window.evaluate_js('JSON.stringify(state.items)')
         window.evaluate_js("document.querySelector('[data-action=browse-tax]').click()")
         wait_for("document.querySelector('#tax-catalog').open && catalogPage && catalogPage.entry_count > 1000")
         window.evaluate_js("document.querySelector('#catalog-list .catalog-select').click()")
         wait_for("catalogSelected !== null")
         if not window.evaluate_js('catalogSelected.is_leaf'):
-            assert window.evaluate_js("document.querySelector('#catalog-apply').disabled")
-        target_code = window.evaluate_js('state.items[0].tax_code')
+            assert window.evaluate_js("document.querySelector('#catalog-copy').disabled")
+        assert window.evaluate_js("document.querySelector('#catalog-apply') === null && document.querySelector('#catalog-target') === null")
+        window.evaluate_js("document.querySelector('#catalog-query').value = '铜制紧固件'; document.querySelector('#catalog-search').click()")
+        wait_for("catalogPage.items[0]?.name === '铜制紧固件'")
+        target_code = window.evaluate_js('catalogPage.items[0].code')
         window.evaluate_js(f"document.querySelector('#catalog-query').value = {json.dumps(target_code)}; document.querySelector('#catalog-search').click()")
         wait_for('catalogPage.total === 1')
         window.evaluate_js("document.querySelector('#catalog-list .catalog-select').click()")
@@ -117,11 +128,13 @@ def check_window():
         assert window.evaluate_js("document.querySelector('#catalog-detail-path').textContent.length > 0")
         rect = window.evaluate_js("(() => { const r = document.querySelector('#tax-catalog').getBoundingClientRect(); return {left:r.left, right:r.right, width:innerWidth}; })()")
         assert rect['left'] >= 0 and rect['right'] <= rect['width']
-        window.evaluate_js("document.querySelector('#catalog-apply').click()")
+        assert window.evaluate_js("!document.querySelector('#catalog-copy').disabled")
+        window.evaluate_js("document.querySelector('#catalog-close').click()")
         wait_for("pending === 0 && !document.querySelector('#tax-catalog').open")
-        assert window.evaluate_js('state.items[0].tax_code') == target_code
-        assert window.evaluate_js('state.items[0].tax_confirmed')
+        assert window.evaluate_js('JSON.stringify(state.items)') == before_catalog
+        assert check_api.get_state()['items'] == json.loads(before_catalog)
         result['full_tax_catalog'] = True
+        result['tax_catalog_read_only'] = True
         result.update(ok=True, focus_preserved=True, manual_tax_preserved=True, latest_edit_exported=True, uncertain_product_review=True)
     except Exception as exc:
         result.update(ok=False, error=str(exc))

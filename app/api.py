@@ -9,13 +9,11 @@ from functools import wraps
 from inspect import signature
 from pathlib import Path
 from threading import RLock
-from threading import Event
 import os
 import shutil
 import hashlib
 
-from app.matching import match_items_with_ai
-from core.ai_classifier import AIClassifier
+from app.matching import match_items
 from core.invoice_writer import generate
 from core.models import Item, compute_amount
 from core.parser import parse_text_block
@@ -24,7 +22,7 @@ from core.paths import TRAIN_DATA_DIR
 from core.local_data import read_json, write_json
 from core.tax_matcher import TaxMatcher
 from core.tax_catalog import TaxCatalog
-from core.user_settings import delete_api_key, load_api_key, load_settings, save_api_key, save_settings
+from core.user_settings import load_settings, save_settings
 from core.user_settings import settings_path
 from core.validators import to_float, validate_item
 
@@ -62,14 +60,6 @@ class DesktopAPI:
         history_dir = self._settings.get('history_dir', '')
         if history_dir:
             self._matcher = TaxMatcher(train_dir=history_dir, industry=self._matcher.industry)
-        self._ai_enabled = self._settings["ai_enabled"]
-        try:
-            self._saved_api_key = load_api_key()
-            self._credential_error = ""
-        except Exception as exc:
-            self._saved_api_key = ""
-            self._credential_error = str(exc)
-        self._ai_classifier = AIClassifier(api_key=self._saved_api_key or None)
         self._items: list[Item] = []
         self._parse_errors: list[dict] = []
         self._match_stats: dict | None = None
@@ -81,10 +71,6 @@ class DesktopAPI:
         self._draft_path = Path(draft_path) if draft_path else settings_path().with_name('draft.json')
         self._draft_message = ''
         self._draft_corrupt = False
-        self._ai_jobs: dict[int, Event] = {}
-        self._ai_cache: dict[tuple, Item] = {}
-        self._ai_inflight: dict[tuple, dict] = {}
-        self._ai_generation = 0
         self._tax_catalog = None
         self._restore_draft()
 
@@ -158,19 +144,11 @@ class DesktopAPI:
             entry = self._matcher.get_entry(item.tax_code) if item.tax_code else None
             item_state["tax_category"] = (entry or {}).get("category", "")
             items.append(item_state)
-        if not self._ai_enabled:
-            ai_message = "AI 辅助已关闭；本地匹配和手动选择仍可使用"
-        elif not self._ai_classifier.is_available():
-            ai_message = self._ai_classifier.unavailable_reason
-        else:
-            ai_message = "AI 辅助已开启"
         return {
             'revision': self._revision,
             "items": items,
             "parse_errors": [dict(error) for error in self._parse_errors],
             "match_stats": dict(self._match_stats) if self._match_stats else None,
-            "ai_available": self._ai_enabled and self._ai_classifier.is_available(),
-            "ai_message": ai_message,
             "raw_text": self._raw_text,
             "draft_message": self._draft_message,
             "product_settings": {
@@ -180,41 +158,7 @@ class DesktopAPI:
                 'price_mode': self._settings.get('price_mode', 'inclusive'),
                 'history_stats': dict(self._matcher.history_stats),
             },
-            "ai_settings": {
-                "enabled": self._ai_enabled,
-                "available": self._ai_classifier.is_available(),
-                "key_configured": bool(self._ai_classifier.api_key),
-                "key_source": "系统凭据管理器" if self._saved_api_key else ("环境变量" if self._ai_classifier.api_key else "未配置"),
-                "message": self._credential_error or ai_message,
-            },
         }
-
-    @synchronized
-    def configure_ai(self, enabled: bool, api_key: str = "", clear_saved_key: bool = False) -> dict:
-        """保存 AI 开关和可选密钥；密钥只写入操作系统凭据管理器。"""
-        new_key = str(api_key or "").strip()
-        try:
-            if new_key:
-                save_api_key(new_key)
-                self._saved_api_key = new_key
-                self._ai_classifier.update_api_key(new_key)
-                self._credential_error = ""
-            elif clear_saved_key:
-                delete_api_key()
-                self._saved_api_key = ""
-                self._ai_classifier.update_api_key(None)
-                self._credential_error = ""
-            self._settings["ai_enabled"] = bool(enabled)
-            save_settings(self._settings)
-        except Exception as exc:
-            return {"ok": False, "message": str(exc), "state": self.get_state()}
-        self._ai_enabled = bool(enabled)
-        for event in self._ai_jobs.values():
-            event.set()
-        self._ai_cache.clear()
-        self._ai_generation += 1
-        self._match_stats = None
-        return {"ok": True, "state": self.get_state()}
 
     @synchronized
     def parse_text(self, text: str) -> dict:
@@ -258,7 +202,6 @@ class DesktopAPI:
                 raise ValueError(f"第 {item.row_id} 行：计算金额超出有效范围")
             if item.name != original.name:
                 item.tax_code = item.tax_name = item.tax_match_source = ""
-                item.tax_ai_confidence = ""
                 item.tax_review_reason = item.tax_standard_name = item.tax_match_confidence = ""
                 item.tax_confirmed = False
             context_changed = item.spec != original.spec or item.unit != original.unit
@@ -298,7 +241,6 @@ class DesktopAPI:
         pending = [item for item in self._items if item.tax_match_source != "manual"]
         for item in pending:
             item.tax_code = item.tax_name = item.tax_match_source = ""
-            item.tax_ai_confidence = ""
         self._match_items(pending)
         return self.get_state()
 
@@ -336,7 +278,6 @@ class DesktopAPI:
         item.tax_code = code
         item.tax_name = entry.get("name", "")
         item.tax_match_source = "manual"
-        item.tax_ai_confidence = ""
         item.tax_match_confidence = "high"
         item.tax_review_reason = ""
         item.tax_confirmed = True
@@ -413,11 +354,7 @@ class DesktopAPI:
     def _match_items(self, items: list[Item]) -> None:
         pending = [item for item in items if item.name]
         if pending:
-            # 录入始终本地完成，AI 只通过逐行按需接口执行。
-            self._match_stats = match_items_with_ai(pending, self._matcher, None)
-            if self._ai_enabled and self._ai_classifier.is_available():
-                self._match_stats['ai_available'] = True
-                self._match_stats['ai_skip_reason'] = '本轮本地匹配，AI 可按需使用'
+            self._match_stats = match_items(pending, self._matcher)
 
     def _validation_errors(self) -> list[str]:
         errors = [f'输入第 {error["line_number"]} 行未解析，请修正后重新解析' for error in self._parse_errors]
@@ -470,8 +407,6 @@ class DesktopAPI:
         save_settings(settings)
         self._settings, self._matcher = settings, matcher
         self._tax_catalog = None
-        self._ai_cache.clear()
-        self._ai_generation += 1
         return {'ok': True, 'state': self.get_state()}
 
     @synchronized
@@ -491,66 +426,6 @@ class DesktopAPI:
             os.startfile(directory)
             return {'ok': True}
         return {'ok': False, 'message': directory}
-
-    def assist_tax(self, row_id: int) -> dict:
-        with self._lock:
-            if not self._ai_enabled or not self._ai_classifier.is_available():
-                return {'ok': False, 'message': '请先启用并配置 AI 辅助'}
-            original = self._item(row_id)
-            if original.tax_confirmed:
-                return {'ok': False, 'message': '已确认分类会保留；请对待确认商品使用 AI'}
-            item = replace(original)
-            key = (item.name, item.spec, item.unit, self._ai_classifier.model, self._matcher.industry, self._ai_generation)
-            event = Event()
-            previous = self._ai_jobs.get(row_id)
-            if previous:
-                previous.set()
-            self._ai_jobs[row_id] = event
-            matcher, classifier = self._matcher, self._ai_classifier
-            cached = self._ai_cache.get(key)
-            request = self._ai_inflight.get(key)
-            owner = not cached and request is None
-            if owner:
-                request = {'done': Event(), 'item': None}
-                self._ai_inflight[key] = request
-        try:
-            if cached:
-                item = replace(cached)
-            elif owner:
-                try:
-                    match_items_with_ai([item], matcher, classifier)
-                    request['item'] = replace(item)
-                finally:
-                    request['done'].set()
-            else:
-                if not request['done'].wait(65) or request['item'] is None:
-                    return {'ok': False, 'message': 'AI 请求未完成，请稍后重试'}
-                item = replace(request['item'])
-            with self._lock:
-                current = next((value for value in self._items if value.row_id == row_id), None)
-                if event.is_set() or matcher is not self._matcher or not current or current.tax_confirmed or (current.name, current.spec, current.unit) != key[:3]:
-                    return {'ok': False, 'message': 'AI 结果已取消或商品已变化，未覆盖明细'}
-                self._ai_cache[key] = replace(item)
-                for field in fields(Item):
-                    if field.name.startswith('tax_') and field.name != 'tax_rate':
-                        setattr(current, field.name, getattr(item, field.name))
-                current.tax_confirmed = False
-                self._revision += 1
-                self._save_draft()
-                return {'ok': True, 'state': self.get_state()}
-        finally:
-            with self._lock:
-                if self._ai_jobs.get(row_id) is event:
-                    self._ai_jobs.pop(row_id, None)
-                if owner and self._ai_inflight.get(key) is request:
-                    self._ai_inflight.pop(key, None)
-
-    @synchronized
-    def cancel_ai(self, row_id: int) -> dict:
-        event = self._ai_jobs.get(row_id)
-        if event:
-            event.set()
-        return {'ok': True}
 
     def _item(self, row_id: int) -> Item:
         for item in self._items:

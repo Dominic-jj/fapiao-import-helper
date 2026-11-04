@@ -14,8 +14,7 @@ def api(tmp_path, monkeypatch):
     matcher = TaxMatcher(train_dir=str(tmp_path), alias_map_path="", confirmed_map_path=str(tmp_path / "confirmed.json"))
     monkeypatch.setattr("app.api.TaxMatcher", lambda: matcher)
     monkeypatch.setattr("app.api.ensure_user_resources", lambda: None)
-    monkeypatch.setattr('app.api.load_settings', lambda: {'ai_enabled': False, 'industry': 'hardware'})
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "")
+    monkeypatch.setattr('app.api.load_settings', lambda: {'industry': 'hardware'})
     return DesktopAPI()
 
 
@@ -40,7 +39,6 @@ def test_spec_edit_recalculates_material_and_manual_choice_is_preserved(api):
 def test_unassigned_quantity_edit_does_not_repeat_matching(api):
     item = api.parse_text('单合 个 1 10')['items'][0]
     assert not item['tax_code']
-    api._ai_classifier.suggest_search_terms = Mock()
     api._match_items = Mock()
     api.update_item(item['row_id'], {'quantity':2})
     api._match_items.assert_called_once_with([])
@@ -109,9 +107,8 @@ def test_manual_selection_survives_rematch_and_quantity_edit(api):
 def test_rename_clears_manual_tax_and_confidence(api):
     item = parsed(api)
     api.select_tax(item["row_id"], item["tax_code"])
-    api._items[0].tax_ai_confidence = "high"
     result = api.update_item(item["row_id"], {"name": ""})["items"][0]
-    assert result["tax_code"] == result["tax_ai_confidence"] == ""
+    assert result["tax_code"] == result["tax_match_confidence"] == ""
 
 
 def test_row_ids_not_reused_after_clear_or_reparse(api):
@@ -178,14 +175,13 @@ def test_export_cancel_and_write_failure_are_reported(api):
     assert not api.export_invoice()["ok"]
 
 
-def test_full_tax_catalog_bypasses_history_and_only_leaf_can_be_selected(api):
+def test_full_tax_catalog_bypasses_history_without_changing_items(api):
     item = parsed(api)
     copper = next(e for e in api._matcher.entries if e['name'] == '铜制紧固件')
     api._matcher.confirmed_map['铜制紧固件'] = item['tax_code']
+    before = api.get_state()['items']
     result = api.browse_tax_catalog('铜制紧固件')
     assert result['items'][0]['code'] == copper['code']
     detail = api.tax_catalog_detail(copper['code'])
     assert detail['path'] and detail['is_leaf']
-    parent = next(e for e in api._matcher.entries if not e['is_leaf'])
-    assert not api.select_tax(item['row_id'], parent['code'])['ok']
-    assert api.select_tax(item['row_id'], detail['code'])['state']['items'][0]['tax_confirmed']
+    assert api.get_state()['items'] == before

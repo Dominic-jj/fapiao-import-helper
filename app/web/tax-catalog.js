@@ -1,4 +1,4 @@
-// 全税表查询不调用匹配或 AI，不改动原始工作簿。
+// 全税表查询直接读取分类，不改动原始工作簿。
 let catalogParent = '';
 let catalogOffset = 0;
 let catalogPage = null;
@@ -13,7 +13,6 @@ function catalogButtons() {
   $('#catalog-prev').disabled = catalogLoading || blocking > 0 || !catalogPage || catalogPage.offset === 0;
   $('#catalog-next').disabled = catalogLoading || blocking > 0 || !catalogPage || catalogPage.offset + catalogPage.page_size >= catalogPage.total;
   $('#catalog-copy').disabled = !catalogSelected?.is_leaf;
-  $('#catalog-apply').disabled = catalogLoading || !catalogSelected?.is_leaf || !$('#catalog-target').value || blocking > 0;
   $('#catalog-list').querySelectorAll('button').forEach(button => { button.disabled = catalogLoading || blocking > 0; });
 }
 function catalogMessage(message, error = false) {
@@ -28,14 +27,11 @@ function clearCatalogDetail() {
   $('#catalog-description').textContent = '选择条目查看完整说明；点击“查看下级”逐层浏览。';
   catalogButtons();
 }
-async function openTaxCatalog(rowId = null) {
+async function openTaxCatalog() {
   catalogReturnFocus = document.activeElement;
   catalogParent = ''; catalogOffset = 0; catalogSelected = null;
   catalogDetailVersion++;
   $('#catalog-query').value = ''; $('#catalog-leaf-only').checked = false;
-  $('#catalog-target').innerHTML = '<option value="">仅查询，不应用</option>' + state.items.map((item, index) =>
-    `<option value="${item.row_id}">第 ${index + 1} 行 · ${escapeHtml(item.name || '未命名商品')}</option>`).join('');
-  $('#catalog-target').value = rowId === null ? '' : String(rowId);
   $('#catalog-detail-name').textContent = '选择分类查看详情';
   $('#catalog-code').value = '';
   $('#catalog-kind').textContent = '';
@@ -60,7 +56,7 @@ async function loadCatalog() {
     });
     $('#catalog-path').innerHTML = '<button type="button" data-parent="">全部</button>' + page.path.map(entry => `<span> / </span><button type="button" data-parent="${escapeHtml(entry.code)}">${escapeHtml(entry.name)}</button>`).join('');
     $('#catalog-count').textContent = `${page.total} 个条目 · 完整税表共 ${page.entry_count} 项`;
-    $('#catalog-list').innerHTML = page.items.length ? page.items.map(entry => `<div class="catalog-entry"><button type="button" class="catalog-select" data-code="${escapeHtml(entry.code)}"><strong>${escapeHtml(entry.display)}</strong><span class="candidate-code">${escapeHtml(entry.code)}</span><span class="muted">${entry.is_leaf ? '具体商品 · 可选' : '汇总分类 · 不可用于开票'}</span></button>${entry.children_count ? `<button type="button" class="button ghost small catalog-drill" data-parent="${escapeHtml(entry.code)}">查看下级 →</button>` : ''}</div>`).join('') : '<p class="muted">没有匹配项，可返回“全部分类”或更换关键词。</p>';
+    $('#catalog-list').innerHTML = page.items.length ? page.items.map(entry => `<div class="catalog-entry"><button type="button" class="catalog-select" data-code="${escapeHtml(entry.code)}"><strong>${escapeHtml(entry.display)}</strong><span class="candidate-code">${escapeHtml(entry.code)}</span><span class="muted">${entry.is_leaf ? '具体商品' : '汇总分类 · 不可用于开票'}</span></button>${entry.children_count ? `<button type="button" class="button ghost small catalog-drill" data-parent="${escapeHtml(entry.code)}">查看下级 →</button>` : ''}</div>`).join('') : '<p class="muted">没有匹配项，可返回“全部分类”或更换关键词。</p>';
     $('#catalog-page').textContent = page.total ? `${page.offset + 1}–${Math.min(page.offset + page.page_size, page.total)} / ${page.total}` : '0 项';
     catalogMessage('分类与说明来自本地税表，未经过自动推荐筛选。');
     catalogLoading = false;
@@ -80,7 +76,7 @@ async function selectCatalogDetail(code) {
     catalogSelected = detail;
     $('#catalog-detail-name').textContent = detail.display;
     $('#catalog-code').value = detail.code;
-    $('#catalog-kind').textContent = detail.is_leaf ? '具体商品，可选择此税号' : '汇总分类，请进入下级选择具体商品';
+    $('#catalog-kind').textContent = detail.is_leaf ? '具体商品，可复制此税号' : '汇总分类，可进入下级查看具体商品';
     $('#catalog-detail-path').textContent = detail.path.map(entry => entry.name).join(' / ');
     $('#catalog-description').textContent = detail.desc || '税表未提供说明，请按完整分类名称判断。';
     $('#catalog-list').querySelectorAll('.catalog-select').forEach(button => button.classList.toggle('active', button.dataset.code === detail.code));
@@ -93,7 +89,6 @@ $('#tax-catalog').addEventListener('close', () => {
   catalogVersion++; catalogDetailVersion++; clearTimeout(catalogTimer);
   if (catalogReturnFocus?.isConnected) catalogReturnFocus.focus();
 });
-$('#catalog-target').addEventListener('change', catalogButtons);
 $('#catalog-search').addEventListener('click', () => { clearTimeout(catalogTimer); catalogOffset = 0; loadCatalog(); });
 $('#catalog-query').addEventListener('input', () => {
   clearTimeout(catalogTimer);
@@ -127,17 +122,4 @@ $('#catalog-copy').addEventListener('click', async () => {
     else { $('#catalog-code').select(); if (!document.execCommand('copy')) throw new Error('请选中税号后按 Ctrl+C 复制'); }
     catalogMessage('具体税号已复制');
   } catch (error) { $('#catalog-code').select(); catalogMessage('可选中税号后按 Ctrl+C 复制', true); }
-});
-$('#catalog-apply').addEventListener('click', () => {
-  const detail = catalogSelected;
-  const rowId = Number($('#catalog-target').value);
-  if (!detail?.is_leaf || !rowId) return;
-  run(async () => {
-    try {
-      await flushEdits();
-      const result = await api().select_tax(rowId, detail.code);
-      if (!result.ok) { catalogMessage(result.message, true); return; }
-      accept(result.state); $('#tax-catalog').close(); notice('已从完整税表选择并确认税编');
-    } catch (error) { catalogMessage(String(error), true); }
-  });
 });

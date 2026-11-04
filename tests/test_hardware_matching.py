@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.matching import match_items_with_ai
+from app.matching import match_items
 from core.models import Item
 from core.tax_matcher import TaxMatcher
 
@@ -35,14 +35,14 @@ def test_clear_hardware_names_recall_real_tax_leaf(matcher, name, expected):
 @pytest.mark.parametrize('name', ['单合', '网管', '腊管', '深黄油', '喷雾黄油', '钢扎带', '拉爆', '生带', '大电工胶布', '手喷漆', '联塑直通', '开关', '滚筒'])
 def test_missing_material_or_meaning_stays_unassigned(matcher, name):
     item = Item(name, '', '个', 1, 10, 10)
-    stats = match_items_with_ai([item], matcher, None)
+    stats = match_items([item], matcher)
     assert not item.tax_code and item.tax_review_reason
     assert stats['needs_review'] == 1
 
 
 def test_spec_resolves_material_without_rewriting_name(matcher):
     item = Item('螺丝', '铜 M6', '个', 1, 10, 10)
-    match_items_with_ai([item], matcher, None)
+    match_items([item], matcher)
     assert item.name == '螺丝' and item.spec == '铜 M6'
     assert item.tax_name == '铜制紧固件'
 
@@ -55,7 +55,7 @@ def test_stationery_substitution_history_requires_real_product_review(matcher):
         assert candidates[0]['source'] == 'confirmed' and candidates[0]['requires_review']
         assert any(c['name'] == '密封用粘胶品' for c in candidates)
         item = Item('长鹿明胶', '', '支', 1, 10, 10)
-        match_items_with_ai([item], matcher, None)
+        match_items([item], matcher)
         assert not item.tax_code and '历史' in item.tax_review_reason
         assert matcher.train_map['长鹿明胶'] == stationery['code']
     finally:

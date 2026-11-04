@@ -19,6 +19,7 @@ TODO.md
 /docs/TAX_MATCHING.md
 /docs/PRODUCT_REVIEW.md
 /docs/EXECUTION_RESULTS.md
+/docs/RELEASE_NOTES.md
 .env
 .env.*
 !.env.example

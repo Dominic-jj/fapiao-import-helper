@@ -1,0 +1,10 @@
+Generated with the built-in image_gen tool. PNG alpha is preserved; ICO contains 16, 20, 24, 32, 40, 48, 64, 96, 128 and 256 pixel sizes.
+
+Use case: logo-brand
+Asset type: production Windows EXE application icon, square 1024 x 1024 PNG with genuine alpha transparency.
+Primary request: Create one polished, distinctive app icon for a lightweight Chinese invoice line-item import helper. Its job is manual item entry, checking invoice details and tax classifications, and Excel export.
+Subject: A bold white invoice/document silhouette with a folded corner, two short blue line-item strokes, and one large simple green confirmation check integrated into the lower portion of the paper. The document and check form one coherent, uncluttered mark.
+Style/medium: Precise flat geometric digital icon, crisp vector-like edges, professionally balanced shapes and negative space.
+Composition/framing: One centered icon only, straight-on. A cobalt blue rounded-square tile occupies about 88% of the square canvas with transparent space outside the tile. Keep the document large and the check chunky so the silhouette remains legible at 16, 24, 32 and 48 pixels. Avoid hairlines and tiny details.
+Color palette: Cobalt blue #2563EB consistent with the existing application UI, white paper, green confirmation accent #16A36B. A very restrained blue tonal shift is acceptable.
+Constraints: True transparent background around the rounded tile, no cast shadow outside the tile. No text, no letters, no numbers, no currency signs, no official tax/government emblem, no brand borrowed from existing apps, no frame mockup, no presentation board, no alternate designs. Deliver the icon itself.

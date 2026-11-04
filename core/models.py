@@ -22,10 +22,8 @@ class Item:
     amount: float
     tax_code: str = ""
     tax_name: str = ""
-    # 税编建议来源：confirmed / alias / tax_list / summary_descendant / ai_rerank / 空
+    # 税编建议来源：manual / confirmed / history / alias / hardware_rule / tax_list / summary_descendant / 空
     tax_match_source: str = ""
-    # AI 重排置信度，仅在来源为 ai_rerank 时有值
-    tax_ai_confidence: str = ""
     tax_match_confidence: str = ""
     tax_review_reason: str = ""
     tax_standard_name: str = ""

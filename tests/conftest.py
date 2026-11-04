@@ -11,8 +11,7 @@ if str(ROOT) not in sys.path:
 
 @pytest.fixture(autouse=True)
 def isolated_preferences(tmp_path, monkeypatch):
-    # 任何测试不得读写真实用户草稿、偏好或系统凭据。
+    # 任何测试不得读写真实用户草稿或偏好。
     monkeypatch.setenv('LOCALAPPDATA', str(tmp_path / 'user-data'))
     monkeypatch.setenv('XDG_CONFIG_HOME', str(tmp_path / 'user-data'))
-    monkeypatch.setattr('app.api.load_api_key', lambda: '')
     monkeypatch.setattr('app.api.ensure_user_resources', lambda: None)
